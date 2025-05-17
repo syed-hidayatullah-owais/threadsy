@@ -1,0 +1,154 @@
+import WardrobeItem from '../models/WardrobeItem.model.js';
+
+export const addItem = async (req, res) => {
+  try {
+    const { name, category, color, season, public: isPublic } = req.body;
+
+    if (!req.fileUrl) {
+      return res.status(400).json({ message: 'Please upload an image' });
+    }
+
+    const item = await WardrobeItem.create({
+      user: req.user._id,
+      name,
+      category,
+      color,
+      season,
+      public: isPublic,
+      image: req.fileUrl
+    });
+
+    res.status(201).json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getItems = async (req, res) => {
+  try {
+    const { category, color, season, public: isPublic } = req.query;
+    
+    const query = { user: req.user._id };
+    
+    if (category) query.category = category;
+    if (color) query.color = color;
+    if (season) query.season = season;
+    if (isPublic !== undefined) query.public = isPublic;
+
+    const items = await WardrobeItem.find(query)
+      .sort({ dateAdded: -1 })
+      .populate('likes', 'displayName photoURL');
+
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getItemById = async (req, res) => {
+  try {
+    const item = await WardrobeItem.findById(req.params.id)
+      .populate('user', 'displayName photoURL')
+      .populate('likes', 'displayName photoURL');
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    // Check if the item is public or belongs to the user
+    if (!item.public && item.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to view this item' });
+    }
+
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateItem = async (req, res) => {
+  try {
+    const { name, category, color, season, public: isPublic } = req.body;
+
+    const updateData = {
+      name,
+      category,
+      color,
+      season,
+      public: isPublic
+    };
+
+    if (req.fileUrl) {
+      updateData.image = req.fileUrl;
+    }
+
+    const item = await WardrobeItem.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      updateData,
+      { new: true }
+    );
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteItem = async (req, res) => {
+  try {
+    const item = await WardrobeItem.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id
+    });
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    res.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const likeItem = async (req, res) => {
+  try {
+    const item = await WardrobeItem.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    if (!item.likes.includes(req.user._id)) {
+      item.likes.push(req.user._id);
+      await item.save();
+    }
+
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const unlikeItem = async (req, res) => {
+  try {
+    const item = await WardrobeItem.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    item.likes = item.likes.filter(
+      (like) => like.toString() !== req.user._id.toString()
+    );
+    await item.save();
+
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

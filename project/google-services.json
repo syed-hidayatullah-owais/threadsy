@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "734007055400",
+    "project_id": "threadsy-f5fae",
+    "storage_bucket": "threadsy-f5fae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:734007055400:android:d217de18c86881d09dd11d",
+        "android_client_info": {
+          "package_name": "com.mjdevs.threadsy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxQeCc7bs7HOH4CUyWdQ_Rk3ZVRJ4kBYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

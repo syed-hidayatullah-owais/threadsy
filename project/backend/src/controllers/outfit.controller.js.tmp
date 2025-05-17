@@ -1,0 +1,138 @@
+import Outfit from '../models/Outfit.model.js';
+
+export const createOutfit = async (req, res) => {
+  try {
+    const { title, items, occasion, public: isPublic } = req.body;
+
+    const outfit = await Outfit.create({
+      user: req.user._id,
+      title,
+      items,
+      occasion,
+      public: isPublic
+    });
+
+    await outfit.populate('items');
+
+    res.status(201).json(outfit);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getOutfits = async (req, res) => {
+  try {
+    const { occasion, public: isPublic } = req.query;
+    
+    const query = { user: req.user._id };
+    
+    if (occasion) query.occasion = occasion;
+    if (isPublic !== undefined) query.public = isPublic;
+
+    const outfits = await Outfit.find(query)
+      .sort({ createdAt: -1 })
+      .populate('items')
+      .populate('likes', 'displayName photoURL');
+
+    res.json(outfits);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getOutfitById = async (req, res) => {
+  try {
+    const outfit = await Outfit.findById(req.params.id)
+      .populate('items')
+      .populate('user', 'displayName photoURL')
+      .populate('likes', 'displayName photoURL');
+
+    if (!outfit) {
+      return res.status(404).json({ message: 'Outfit not found' });
+    }
+
+    // Check if the outfit is public or belongs to the user
+    if (!outfit.public && outfit.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to view this outfit' });
+    }
+
+    res.json(outfit);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateOutfit = async (req, res) => {
+  try {
+    const { title, items, occasion, public: isPublic } = req.body;
+
+    const outfit = await Outfit.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { title, items, occasion, public: isPublic },
+      { new: true }
+    ).populate('items');
+
+    if (!outfit) {
+      return res.status(404).json({ message: 'Outfit not found' });
+    }
+
+    res.json(outfit);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteOutfit = async (req, res) => {
+  try {
+    const outfit = await Outfit.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id
+    });
+
+    if (!outfit) {
+      return res.status(404).json({ message: 'Outfit not found' });
+    }
+
+    res.json({ message: 'Outfit deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const likeOutfit = async (req, res) => {
+  try {
+    const outfit = await Outfit.findById(req.params.id);
+
+    if (!outfit) {
+      return res.status(404).json({ message: 'Outfit not found' });
+    }
+
+    if (!outfit.likes.includes(req.user._id)) {
+      outfit.likes.push(req.user._id);
+      await outfit.save();
+    }
+
+    res.json(outfit);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const unlikeOutfit = async (req, res) => {
+  try {
+    const outfit = await Outfit.findById(req.params.id);
+
+    if (!outfit) {
+      return res.status(404).json({ message: 'Outfit not found' });
+    }
+
+    outfit.likes = outfit.likes.filter(
+      (like) => like.toString() !== req.user._id.toString()
+    );
+    await outfit.save();
+
+    res.json(outfit);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
